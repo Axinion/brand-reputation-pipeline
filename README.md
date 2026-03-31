@@ -147,4 +147,4 @@ google-play-scraper - python-dotenv - Pandas
 ## Author
 
 Mihir Pandya  <- edit this
-[LinkedIn]((https://www.linkedin.com/in/pandyamihir/))  <- edit this
+([LinkedIn](https://www.linkedin.com/in/pandyamihir/))  <- edit this
