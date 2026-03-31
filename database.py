@@ -38,6 +38,32 @@ def init_db(db_path):
     return db
 
 
+def init_scored_table(db):
+    table = db["scored_mentions"]
+    columns = {
+        "id": str,
+        "mention_id": str,
+        "brand": str,
+        "source": str,
+        "source_detail": str,
+        "timestamp": str,
+        "aspect": str,
+        "sentiment": str,
+        "confidence": float,
+        "overall_sentiment": str,
+        "overall_score": float,
+        "original_text": str,
+        "created_at": str,
+    }
+    table.create(columns=columns, pk="id", if_not_exists=True)
+    table.create_index(["mention_id"], if_not_exists=True)
+    table.create_index(["brand"], if_not_exists=True)
+    table.create_index(["aspect"], if_not_exists=True)
+    table.create_index(["sentiment"], if_not_exists=True)
+    table.create_index(["timestamp"], if_not_exists=True)
+    print(f"Scored table ready | current rows: {table.count}")
+
+
 def insert_mentions(db, mentions, brand_name):
     table = db["raw_mentions"]
     before_count = table.count
@@ -71,6 +97,21 @@ def insert_mentions(db, mentions, brand_name):
         f"{inserted} inserted, {len(prepared)} processed."
     )
     return inserted
+
+
+def insert_scored(db, records):
+    """Upsert scored aspect records into scored_mentions table."""
+    if not records:
+        print("  No scored records to insert.")
+        return 0
+
+    now = datetime.now(tz=timezone.utc).isoformat()
+    for r in records:
+        r["created_at"] = now
+
+    db["scored_mentions"].upsert_all(records, pk="id")
+    print(f"  Inserted/updated {len(records)} scored records.")
+    return len(records)
 
 
 def get_stats(db, brand_name):
