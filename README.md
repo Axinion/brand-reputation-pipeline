@@ -4,7 +4,6 @@ An end-to-end data pipeline that ingests brand mentions from multiple
 sources, normalizes and deduplicates them, and stores them in a
 structured SQLite database - ready for downstream NLP sentiment analysis.
 
-Built as a portfolio project targeting Data Analyst / Data Scientist roles.
 
 ---
 
