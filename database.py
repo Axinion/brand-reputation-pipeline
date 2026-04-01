@@ -233,3 +233,67 @@ def get_stats(db, brand_name):
     print(f"{'='*40}\n")
 
     return stats
+
+
+def init_alert_log(db):
+    """
+    Track which alerts have already been fired.
+    Prevents duplicate notifications on repeated pipeline runs.
+    """
+    if "alert_log" not in db.table_names():
+        db["alert_log"].create({
+            "id":        str,
+            "alert_id":  str,
+            "brand":     str,
+            "channel":   str,   # 'slack' or 'email'
+            "fired_at":  str,
+            "status":    str,   # 'sent' or 'failed'
+            "error_msg": str,
+        }, pk="id")
+        db["alert_log"].create_index(["alert_id"], if_not_exists=True)
+        db["alert_log"].create_index(["brand"],    if_not_exists=True)
+        db["alert_log"].create_index(["fired_at"], if_not_exists=True)
+        print("  Created alert_log table")
+    return db
+
+
+def get_unfired_alerts(db, brand_name, lookback_hours=24):
+    """
+    Return alerts that haven't been fired in the last lookback_hours.
+    This is the deduplication query.
+    """
+    from datetime import timedelta
+    cutoff = (
+        datetime.now(tz=timezone.utc) - timedelta(hours=lookback_hours)
+    ).isoformat()
+
+    fired_ids = set(
+        r[0] for r in db.execute(
+            """SELECT DISTINCT alert_id FROM alert_log
+               WHERE brand = ? AND fired_at > ? AND status = 'sent'""",
+            [brand_name, cutoff]
+        ).fetchall()
+    )
+
+    all_alerts = list(db["alerts"].rows_where("brand = ?", [brand_name]))
+    unfired = [a for a in all_alerts if a["id"] not in fired_ids]
+    return unfired
+
+
+def log_alert_fired(db, alert_id, brand_name, channel, status, error_msg=""):
+    """Record that an alert was fired so it won't be sent again."""
+    import hashlib
+
+    log_id = hashlib.md5(
+        f"{alert_id}{channel}{datetime.now().isoformat()}".encode()
+    ).hexdigest()[:16]
+
+    db["alert_log"].insert({
+        "id":        log_id,
+        "alert_id":  alert_id,
+        "brand":     brand_name,
+        "channel":   channel,
+        "fired_at":  datetime.now(tz=timezone.utc).isoformat(),
+        "status":    status,
+        "error_msg": error_msg,
+    })

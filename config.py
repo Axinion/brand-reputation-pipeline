@@ -15,3 +15,11 @@ APP_STORE_APP_ID = "363590051"
 APP_STORE_APP_NAME = "netflix"
 
 DB_PATH = "data/brand_mentions.db"
+
+# Alerting
+SLACK_WEBHOOK_URL    = os.getenv("SLACK_WEBHOOK_URL", "")
+ALERT_EMAIL_FROM     = os.getenv("ALERT_EMAIL_FROM", "")
+ALERT_EMAIL_TO       = os.getenv("ALERT_EMAIL_TO", "")
+ALERT_EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "")
+SMTP_HOST            = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT            = int(os.getenv("SMTP_PORT", "587"))
