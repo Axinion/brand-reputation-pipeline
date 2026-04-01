@@ -1,8 +1,9 @@
 # Multi-Source Brand Reputation Intelligence Pipeline
 
-An end-to-end data pipeline that ingests brand mentions from multiple
-sources, normalizes and deduplicates them, and stores them in a
-structured SQLite database - ready for downstream NLP sentiment analysis.
+An end-to-end pipeline that ingests brand mentions from multiple sources,
+normalizes and stores them, runs two-stage NLP sentiment analysis (PyABSA
+aspect extraction + distilBERT fallback), and evaluates model performance
+against two independent ground truth datasets.
 
 
 ---
@@ -10,17 +11,19 @@ structured SQLite database - ready for downstream NLP sentiment analysis.
 ## What it does
 
 ```text
-Reddit (JSON) --|
-NewsAPI        --|--> Normalize --> Deduplicate --> SQLite DB
-Google Play    --|
+Reddit (JSON) --|                         |--> PyABSA ATEPC (aspect sentiment)
+NewsAPI        --|--> Normalize --> SQLite-|--> distilBERT fallback (overall)
+Google Play    --|                         |--> Evaluation + model card
 ```
 
 - Scrapes brand mentions across 3 sources with no manual intervention
 - Normalizes text (HTML, URLs, emoji, unicode) into a clean unified schema
-- Deduplicates using MD5 hashing - idempotent across repeated runs
-- Stores in SQLite with indexes for fast downstream querying
+- Deduplicates using MD5 hashing — idempotent across repeated runs
+- Two-stage NLP: aspect-level sentiment + overall sentiment fallback
+- 100% mention coverage across 722 records
+- Evaluated against two independent ground truth datasets
 
-**Current dataset (Netflix):** 748 clean records - 94% normalization yield - 0 duplicates
+**Current dataset (Netflix):** 748 clean records — 94% normalization yield — 0 duplicates
 
 ---
 
@@ -33,7 +36,13 @@ brand-reputation-pipeline/
 |  |- news_scraper.py      # NewsAPI scraper with pagination
 |  |- review_scraper.py    # Google Play review scraper
 |  |- normalizer.py        # Text cleaning and quality filtering
-|- nlp/                    # Week 2 - sentiment analysis (coming)
+|- nlp/                    # Week 2 - sentiment analysis
+||  |- sentiment_engine.py  # PyABSA ATEPC + distilBERT fallback
+||  |- taxonomy.py          # Aspect taxonomy (5 categories)
+||  |- evaluator.py         # Model evaluation + model card generation
+||  |- model_card.md        # Full evaluation methodology and results
+||  |- metrics.json         # Raw metrics for downstream use
+||  |- manual_labels.csv    # 100 hand-labelled Reddit + news records
 |- analytics/              # Week 3 - trend detection (coming)
 |- reports/                # Week 4 - report generation (coming)
 |- pipeline/               # Week 4 - Prefect orchestration (coming)
@@ -127,19 +136,34 @@ models use normalized, but original is available for display.
 
 ---
 
+## Model performance
+
+| Evaluation set | N | Accuracy |
+|---|---|---|
+| Google Play reviews (automated, star-rating ground truth) | 189 | 83.1% |
+| Reddit + news (manual labels) | 100 | 70.0% |
+
+High-confidence predictions (> 0.90) achieve **91.6% accuracy**.
+Aspect-specific predictions (UX, quality, price) reach **87–100%** on Reddit text.
+
+Full methodology, per-class metrics, and limitations in [nlp/model_card.md](nlp/model_card.md).
+
+---
+
 ## Roadmap
 
-- [x] Week 1 - Multi-source data ingestion pipeline
-- [ ] Week 2 - Aspect-based sentiment analysis (PyABSA)
-- [ ] Week 3 - Trend detection and alerting (Prefect)
-- [ ] Week 4 - LLM report generation (Claude API) and deployment
+- [x] Week 1 — Multi-source data ingestion pipeline
+- [x] Week 2 — Aspect-based sentiment analysis (PyABSA + distilBERT)
+- [ ] Week 3 — Trend detection and alerting (Prefect)
+- [ ] Week 4 — LLM report generation (Claude API) and deployment
 
 ---
 
 ## Tech stack
 
-Python 3.13 - SQLite - sqlite-utils - requests - newsapi-python -
-google-play-scraper - python-dotenv - Pandas
+Python 3.13 · SQLite · sqlite-utils · requests · newsapi-python ·
+google-play-scraper · python-dotenv · PyABSA · Hugging Face Transformers ·
+distilBERT · scikit-learn · Pandas · rapidfuzz
 
 ---
 

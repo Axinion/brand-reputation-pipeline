@@ -232,7 +232,12 @@ def evaluate_by_source(db_path, brand_name):
     return result
 
 
-def write_model_card(metrics, conf_analysis, output_path="nlp/model_card.md"):
+def write_model_card(
+    metrics,
+    conf_analysis,
+    manual_metrics=None,
+    output_path="nlp/model_card.md",
+):
     """Write a markdown model card with all evaluation results."""
     from datetime import datetime
 
@@ -298,6 +303,38 @@ def write_model_card(metrics, conf_analysis, output_path="nlp/model_card.md"):
             f"| {band.strip()} | {vals['n']} | {vals['accuracy']:.1%} |"
         )
 
+    if manual_metrics:
+        m_acc = manual_metrics["accuracy"]
+        m_n   = manual_metrics["n_samples"]
+        lines += [
+            "",
+            "## Manual evaluation (Reddit + news)",
+            "",
+            f"- **Labelled by:** human annotator",
+            f"- **Sample size:** {m_n} records",
+            f"- **Overall accuracy:** {m_acc:.1%}",
+            "",
+            "| Source | N | Accuracy |",
+            "|--------|---|----------|",
+        ]
+        for src, vals in manual_metrics.get("by_source", {}).items():
+            lines.append(
+                f"| {src} | {vals['n']} | {vals['accuracy']:.1%} |"
+            )
+        lines.append("")
+        m_report = manual_metrics.get("report", {})
+        lines += [
+            "| Class | Precision | Recall | F1 |",
+            "|-------|-----------|--------|----|",
+        ]
+        for label in ["POSITIVE", "NEGATIVE", "NEUTRAL"]:
+            if label in m_report:
+                r = m_report[label]
+                lines.append(
+                    f"| {label} | {r['precision']:.3f} "
+                    f"| {r['recall']:.3f} | {r['f1-score']:.3f} |"
+                )
+
     lines += [
         "",
         "## Limitations",
@@ -323,46 +360,105 @@ def write_model_card(metrics, conf_analysis, output_path="nlp/model_card.md"):
     print(f"\nModel card written to: {output_path}")
 
 
+def evaluate_manual_labels(csv_path="nlp/manual_labels.csv"):
+    """
+    Evaluate model accuracy on manually labelled Reddit + news records.
+    Returns metrics dict for inclusion in model card.
+    """
+    df = pd.read_csv(csv_path)
+
+    missing = df["true_label"].isna().sum()
+    if missing > 0:
+        print(f"WARNING: {missing} rows have no true_label — skipping those")
+        df = df.dropna(subset=["true_label"])
+
+    df["true_label"]      = df["true_label"].str.upper().str.strip()
+    df["predicted_label"] = df["predicted"].str.upper().str.strip()
+
+    labels = ["POSITIVE", "NEGATIVE", "NEUTRAL"]
+    acc    = accuracy_score(df["true_label"], df["predicted_label"])
+    report = classification_report(
+        df["true_label"],
+        df["predicted_label"],
+        labels=labels,
+        output_dict=True,
+        zero_division=0,
+    )
+
+    by_source = {}
+    for source in df["source"].unique():
+        subset = df[df["source"] == source]
+        by_source[source] = {
+            "n":        len(subset),
+            "accuracy": round(
+                accuracy_score(subset["true_label"], subset["predicted_label"]), 4
+            ),
+        }
+
+    print(f"\nManual evaluation — {len(df)} Reddit + news records")
+    print(f"Overall accuracy: {acc:.1%}")
+    print()
+    print(classification_report(
+        df["true_label"], df["predicted_label"], labels=labels, zero_division=0
+    ))
+    print("By source:")
+    for src, vals in by_source.items():
+        print(f"  {src:10}: {vals['accuracy']:.1%}  (n={vals['n']})")
+
+    return {
+        "accuracy":  round(acc, 4),
+        "n_samples": len(df),
+        "report":    report,
+        "by_source": by_source,
+    }
+
+
 def main():
     import warnings
     warnings.filterwarnings("ignore")
-
+    from pathlib import Path
     from config import BRAND_NAME, DB_PATH
 
     print("=" * 60)
-    print(f"Model Evaluation | Brand: {BRAND_NAME}")
+    print(f"Final Model Evaluation | Brand: {BRAND_NAME}")
     print("=" * 60)
 
-    # load ground truth
+    # automated evaluation — Google Play ground truth
+    print("\n--- Automated evaluation (Google Play star ratings) ---")
     df = load_ground_truth(DB_PATH, BRAND_NAME)
-
-    if len(df) == 0:
-        print("No ground truth records found. Check that:")
-        print("  1. run_fallback_pipeline has been run")
-        print("  2. Google Play reviews have score field populated")
-        return
-
-    # compute metrics
-    metrics = compute_metrics(df)
-
-    # confidence analysis
+    metrics       = compute_metrics(df)
     conf_analysis = evaluate_by_confidence(df)
 
-    # write model card
-    write_model_card(metrics, conf_analysis)
+    # manual evaluation — Reddit + news
+    manual_metrics = None
+    if Path("nlp/manual_labels.csv").exists():
+        df_manual = pd.read_csv("nlp/manual_labels.csv")
+        if df_manual["true_label"].notna().sum() >= 50:
+            print("\n--- Manual evaluation (Reddit + news) ---")
+            manual_metrics = evaluate_manual_labels()
+            print(f"Manual accuracy: {manual_metrics['accuracy']:.1%}")
+        else:
+            print("\nManual labels not yet complete — skipping")
+    else:
+        print("\nnlp/manual_labels.csv not found — skipping manual eval")
 
-    # save raw metrics as JSON for later use
+    # write final model card
+    write_model_card(metrics, conf_analysis, manual_metrics)
+
+    # save combined metrics
     import json
-    metrics_out = {
-        "accuracy":          metrics["accuracy"],
-        "n_samples":         metrics["n_samples"],
-        "report":            metrics["report"],
-        "confidence_bands":  conf_analysis,
+    all_metrics = {
+        "automated": {
+            "accuracy":         metrics["accuracy"],
+            "n_samples":        metrics["n_samples"],
+            "report":           metrics["report"],
+            "confidence_bands": conf_analysis,
+        },
+        "manual": manual_metrics,
     }
-    Path("nlp/metrics.json").write_text(
-        json.dumps(metrics_out, indent=2)
-    )
-    print("Raw metrics saved to nlp/metrics.json")
+    Path("nlp/metrics.json").write_text(json.dumps(all_metrics, indent=2))
+    print("\nFinal metrics saved to nlp/metrics.json")
+    print("Model card updated at nlp/model_card.md")
 
 
 if __name__ == "__main__":

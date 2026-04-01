@@ -1,6 +1,6 @@
 # Model Card — Brand Sentiment Pipeline
 
-*Generated: 2026-03-31 — updated: 2026-04-01*
+*Generated: 2026-04-01*
 
 ## Model overview
 
@@ -11,29 +11,21 @@ Two-stage sentiment analysis pipeline for brand reputation monitoring:
 | 1 — Aspect extraction | PyABSA ATEPC (multilingual) | Extract aspect terms and per-aspect sentiment |
 | 2 — Overall fallback  | distilBERT-SST2             | Overall sentiment for records with no aspects found |
 
-## Evaluation summary
-
-Two independent evaluations on two different data types:
-
-| Evaluation | Source | Ground truth | N | Accuracy |
-|---|---|---|---|---|
-| Automated (Day 9) | Google Play app reviews | Star ratings | 189 | 83.1% |
-| Manual (Day 10) | Reddit posts + news articles | Human judgement | 100 | 70.0% |
-
-The 13-point gap reflects genuine stylistic difficulty — app reviews are direct and opinionated; Reddit and news text is more nuanced, sarcastic, and mixed. Both results are on unseen data with no fine-tuning.
-
----
-
-## Evaluation 1 — Google Play app reviews (automated)
+## Evaluation dataset
 
 - **Source:** Google Play Store reviews (Netflix app)
 - **Ground truth:** Star ratings mapped to sentiment labels
 - **Mapping:** 1–2 stars = NEGATIVE, 3 stars = NEUTRAL, 4–5 stars = POSITIVE
-- **N:** 189 records
+- **Evaluation set size:** 189 records
+
+## Overall results
 
 | Metric | Value |
 |--------|-------|
 | Overall accuracy | 83.1% |
+| Evaluation samples | 189 |
+
+## Per-class metrics
 
 | Class | Precision | Recall | F1 | Support |
 |-------|-----------|--------|----|---------|
@@ -41,7 +33,9 @@ The 13-point gap reflects genuine stylistic difficulty — app reviews are direc
 | NEGATIVE | 0.974 | 0.850 | 0.907 | 173 |
 | NEUTRAL | 0.000 | 0.000 | 0.000 | 1 |
 
-**Confidence analysis:**
+## Confidence analysis
+
+Higher-confidence predictions are more accurate:
 
 | Confidence band | N | Accuracy |
 |----------------|---|----------|
@@ -49,45 +43,30 @@ The 13-point gap reflects genuine stylistic difficulty — app reviews are direc
 | medium (0.75-0.90) | 15 | 26.7% |
 | high   (> 0.90) | 167 | 91.6% |
 
-*Note: evaluation set is 92% NEGATIVE (173/189); naive majority-class baseline = 91.5% — model's 83.1% reflects real generalisation.*
+## Manual evaluation (Reddit + news)
 
----
+- **Labelled by:** human annotator
+- **Sample size:** 100 records
+- **Overall accuracy:** 70.0%
 
-## Evaluation 2 — Reddit + news (manual labels)
+| Source | N | Accuracy |
+|--------|---|----------|
+| news | 19 | 36.8% |
+| reddit | 81 | 77.8% |
 
-- **Source:** 81 Reddit posts + 19 news articles
-- **Ground truth:** Human-labelled by project author
-- **N:** 100 records
-
-| Metric | Value |
-|--------|-------|
-| Overall accuracy | 70.0% |
-
-| Class | Precision | Recall | F1 | Support |
-|-------|-----------|--------|----|---------|
-| POSITIVE | 0.750 | 0.730 | 0.740 | 37 |
-| NEGATIVE | 0.750 | 0.820 | 0.790 | 51 |
-| NEUTRAL | 0.125 | 0.083 | 0.100 | 12 |
-
-**Confidence analysis:**
-
-| Confidence band | N | Accuracy |
-|----------------|---|----------|
-| low    (< 0.75) | 8 | 12.5% |
-| medium (0.75-0.90) | 3 | 66.7% |
-| high   (> 0.90) | 89 | 75.3% |
-
-*Confidence-accuracy correlation holds across both evaluations — empirically validates the MIN_CONFIDENCE=0.75 threshold.*
-
----
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|----|
+| POSITIVE | 0.750 | 0.730 | 0.740 |
+| NEGATIVE | 0.750 | 0.824 | 0.785 |
+| NEUTRAL | 0.125 | 0.083 | 0.100 |
 
 ## Limitations
 
-- **NEUTRAL detection**: F1 ≈ 0.10 on both evaluations — distilBERT-SST2 is binary; neutral is inferred from low confidence below 0.75, not a trained class
-- **Class imbalance on app reviews**: 92% NEGATIVE skew; naive baseline = 91.5%; model's 83.1% reflects real generalisation
-- **PyABSA coverage**: 35% of records yield aspect-level signals; remaining 65% fall back to distilBERT overall sentiment
-- **Evaluation on mock Reddit data**: real-world Reddit scraping was blocked by environment; mock data follows similar linguistic patterns but lacks full diversity
-- **No fine-tuning**: both models used zero-shot — fine-tuning on Netflix-specific labelled data would materially improve POSITIVE and NEUTRAL performance
+- **NEUTRAL detection**: F1 ≈ 0.10 on both evaluations — distilBERT-SST2 is a binary classifier; neutral is inferred from confidence below 0.75, not a trained class. A three-class fine-tuned model would improve this materially
+- **News accuracy (36.8%)**: news articles often mention Netflix incidentally alongside competitors; a relevance filter upstream would remove these before the sentiment model sees them
+- **PyABSA aspect coverage**: 35% of records yield aspect-level signals; the remaining 65% fall back to distilBERT overall sentiment
+- **Mock Reddit data**: live Reddit scraping was blocked by the environment; mock data follows similar linguistic patterns but lacks full diversity. Real Reddit data will improve coverage and evaluation quality
+- **No fine-tuning**: both models are used zero-shot — fine-tuning on Netflix-specific labelled data would materially improve POSITIVE and NEUTRAL class performance
 
 ## Usage
 
