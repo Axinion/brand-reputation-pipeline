@@ -153,6 +153,47 @@ def insert_daily_rows(db, records):
     return len(records)
 
 
+def init_alerts_table(db):
+    """Create alerts table for trend spike notifications."""
+    table = db["alerts"]
+    columns = {
+        "id":             str,
+        "brand":          str,
+        "alert_type":     str,
+        "aspect":         str,
+        "date":           str,
+        "score":          float,
+        "baseline_mean":  float,
+        "baseline_std":   float,
+        "z_score":        float,
+        "mention_count":  float,
+        "baseline_count": float,
+        "severity":       str,
+        "top_mentions":   str,
+        "fired_at":       str,
+    }
+    table.create(columns=columns, pk="id", if_not_exists=True)
+    table.create_index(["brand"],      if_not_exists=True)
+    table.create_index(["date"],       if_not_exists=True)
+    table.create_index(["aspect"],     if_not_exists=True)
+    table.create_index(["alert_type"], if_not_exists=True)
+    print(f"Alerts table ready | current rows: {table.count}")
+    return db
+
+
+def insert_alerts(db, alerts):
+    """Upsert alert dicts into the alerts table."""
+    if not alerts:
+        print("  No alerts to insert.")
+        return 0
+    fired_at = datetime.now(tz=timezone.utc).isoformat()
+    for a in alerts:
+        a["fired_at"] = fired_at
+    db["alerts"].upsert_all(alerts, pk="id")
+    print(f"  Inserted/updated {len(alerts)} alerts.")
+    return len(alerts)
+
+
 def get_stats(db, brand_name):
     """Print and return summary stats for a brand."""
     rows = list(db.execute("SELECT * FROM raw_mentions WHERE brand = ?", [brand_name]).fetchall())
