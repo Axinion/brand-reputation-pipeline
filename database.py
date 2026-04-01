@@ -114,6 +114,45 @@ def insert_scored(db, records):
     return len(records)
 
 
+def init_daily_table(db):
+    """Create brand_health_daily table for time-series aggregation."""
+    table = db["brand_health_daily"]
+    columns = {
+        "id":             str,
+        "brand":          str,
+        "date":           str,
+        "aspect":         str,
+        "avg_score":      float,
+        "mention_count":  int,
+        "positive_count": int,
+        "negative_count": int,
+        "neutral_count":  int,
+        "positive_pct":   float,
+        "negative_pct":   float,
+        "neutral_pct":    float,
+        "created_at":     str,
+    }
+    table.create(columns=columns, pk="id", if_not_exists=True)
+    table.create_index(["date"],   if_not_exists=True)
+    table.create_index(["brand"],  if_not_exists=True)
+    table.create_index(["aspect"], if_not_exists=True)
+    print(f"Daily table ready | current rows: {table.count}")
+    return db
+
+
+def insert_daily_rows(db, records):
+    """Upsert daily aggregated rows into brand_health_daily."""
+    if not records:
+        print("  No daily rows to insert.")
+        return 0
+    now = datetime.now(tz=timezone.utc).isoformat()
+    for r in records:
+        r["created_at"] = now
+    db["brand_health_daily"].upsert_all(records, pk="id")
+    print(f"  Upserted {len(records)} daily rows.")
+    return len(records)
+
+
 def get_stats(db, brand_name):
     """Print and return summary stats for a brand."""
     rows = list(db.execute("SELECT * FROM raw_mentions WHERE brand = ?", [brand_name]).fetchall())
