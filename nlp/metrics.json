@@ -47,5 +47,57 @@
       "n": 167,
       "accuracy": 0.9162
     }
+  },
+  "manual_eval": {
+    "source": "reddit + news (100 hand-labelled records)",
+    "accuracy": 0.7,
+    "n_samples": 100,
+    "report": {
+      "POSITIVE": {
+        "precision": 0.75,
+        "recall": 0.7297297297297297,
+        "f1-score": 0.7397260273972602,
+        "support": 37.0
+      },
+      "NEGATIVE": {
+        "precision": 0.75,
+        "recall": 0.8235294117647058,
+        "f1-score": 0.7850467289719626,
+        "support": 51.0
+      },
+      "NEUTRAL": {
+        "precision": 0.125,
+        "recall": 0.08333333333333333,
+        "f1-score": 0.1,
+        "support": 12.0
+      },
+      "accuracy": 0.7,
+      "macro avg": {
+        "precision": 0.5416666666666666,
+        "recall": 0.5455308249425895,
+        "f1-score": 0.541590918789741,
+        "support": 100.0
+      },
+      "weighted avg": {
+        "precision": 0.675,
+        "recall": 0.7,
+        "f1-score": 0.6860724619126873,
+        "support": 100.0
+      }
+    },
+    "confidence_bands": {
+      "low (< 0.75)": {
+        "n": 8,
+        "accuracy": 0.125
+      },
+      "medium (0.75-0.90)": {
+        "n": 3,
+        "accuracy": 0.6667
+      },
+      "high (> 0.90)": {
+        "n": 89,
+        "accuracy": 0.7528
+      }
+    }
   }
 }
