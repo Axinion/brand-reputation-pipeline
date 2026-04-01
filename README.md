@@ -136,6 +136,12 @@ models use normalized, but original is available for display.
 
 ---
 
+## Slack alert example
+
+![Slack alert card showing sentiment drop with z-score, brand health score, and example mentions](docs/slack_alert_example.png)
+
+---
+
 ## Model performance
 
 | Evaluation set | N | Accuracy |
