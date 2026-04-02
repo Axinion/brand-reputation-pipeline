@@ -16,6 +16,10 @@ APP_STORE_APP_NAME = "netflix"
 
 DB_PATH = "data/brand_mentions.db"
 
+# LLM Report Generation
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL   = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
 # Alerting
 SLACK_WEBHOOK_URL    = os.getenv("SLACK_WEBHOOK_URL", "")
 ALERT_EMAIL_FROM     = os.getenv("ALERT_EMAIL_FROM", "")
