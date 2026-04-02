@@ -92,6 +92,12 @@ TAXONOMY = {
         "notification",
         "autoplay",
         "skip",
+        "subtitle",
+        "subtitles",
+        "caption",
+        "captions",
+        "audio",
+        "dub",
     ],
     "delivery": [
         "delivery",
@@ -112,7 +118,28 @@ TAXONOMY = {
         "wait",
         "delay",
         "cancel",
+        "batch",
+        "batches",
+        "weekly",
+        "drop",
+        "binge",
+        "all at once",
     ],
+}
+
+IGNORE_TERMS = {
+    "netflix",
+    "app",
+    "it",
+    "this",
+    "the",
+    "they",
+    "we",
+    "i",
+    "thing",
+    "stuff",
+    "one",
+    "something",
 }
 
 # Minimum confidence score to trust an aspect prediction
@@ -129,12 +156,16 @@ def map_to_taxonomy(aspect_term: str) -> str:
     """
     term = aspect_term.lower().strip()
 
-    # exact match first
+    # filter out brand names and stop words
+    if term in IGNORE_TERMS:
+        return "ignore"
+
+    # exact match
     for category, keywords in TAXONOMY.items():
         if term in keywords:
             return category
 
-    # partial match second
+    # partial match
     for category, keywords in TAXONOMY.items():
         for keyword in keywords:
             if keyword in term or term in keyword:
@@ -156,6 +187,9 @@ if __name__ == "__main__":
         "app design",
         "subscription fee",
         "buffering",
+        "netflix",
+        "subtitles",
+        "batches",
         "xyz_unknown_term",
     ]
 
