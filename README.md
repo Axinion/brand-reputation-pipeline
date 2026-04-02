@@ -142,6 +142,28 @@ models use normalized, but original is available for display.
 
 ---
 
+## Prefect orchestration
+
+The full pipeline runs as a Prefect DAG — 7 tasks chained sequentially with retry logic, caching, and a weekly deployment schedule.
+
+![Prefect dashboard showing brand-reputation-pipeline flow run with 3 completed tasks and 1 failed (retry test)](docs/prefect_dashboard.png)
+
+The dashboard above shows the **retry resilience test**: `aggregate-daily` raised a deliberate `ValueError`, retried twice (30s apart), then failed — and the 3 downstream tasks never ran. This is the production-safe behavior for a scheduled pipeline.
+
+| Task | Retries | Notes |
+|---|---|---|
+| `ingest-data` | 2 | Cached 6h — skips re-scrape within same day |
+| `normalize-and-store` | 2 | |
+| `run-sentiment-analysis` | 1 | 1hr timeout for NLP batch inference |
+| `aggregate-daily` | 2 | |
+| `detect-trends` | 2 | |
+| `compute-health-score` | 2 | |
+| `fire-alerts` | 1 | Deduplication — safe to retry |
+
+Weekly deployment registered: `brand-reputation-pipeline/weekly-brand-monitor`
+
+---
+
 ## Model performance
 
 | Evaluation set | N | Accuracy |
@@ -160,7 +182,7 @@ Full methodology, per-class metrics, and limitations in [nlp/model_card.md](nlp/
 
 - [x] Week 1 — Multi-source data ingestion pipeline
 - [x] Week 2 — Aspect-based sentiment analysis (PyABSA + distilBERT)
-- [ ] Week 3 — Trend detection and alerting (Prefect)
+- [x] Week 3 — Trend detection, alerting, and Prefect orchestration
 - [ ] Week 4 — LLM report generation (Claude API) and deployment
 
 ---
@@ -169,7 +191,7 @@ Full methodology, per-class metrics, and limitations in [nlp/model_card.md](nlp/
 
 Python 3.13 · SQLite · sqlite-utils · requests · newsapi-python ·
 google-play-scraper · python-dotenv · PyABSA · Hugging Face Transformers ·
-distilBERT · scikit-learn · Pandas · rapidfuzz
+distilBERT · scikit-learn · Pandas · rapidfuzz · Prefect 3 · smtplib · Slack Webhooks
 
 ---
 
