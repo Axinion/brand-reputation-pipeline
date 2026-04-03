@@ -366,44 +366,42 @@ def save_report(report_text, brand_name, output_dir="reports/output"):
 # ── Main orchestrator ─────────────────────────────────────────────────
 
 def run_report_generator(db_path, brand_name, output_dir="outputs"):
-    """Full report generation pipeline."""
+    """Full report generation pipeline — data → LLM → HTML."""
     import warnings
     warnings.filterwarnings("ignore")
 
     from config import GROQ_API_KEY, GROQ_MODEL
+    from reports.render_template import render_report
 
     if not GROQ_API_KEY:
         print("ERROR: GROQ_API_KEY not set in .env")
         return None
 
-    print(f"Building data summary for {brand_name}...")
+    print(f"Building data summary...")
     data = build_data_summary(db_path, brand_name, days_back=7)
+    print(f"  Score: {data['current_score']:.1f}/100  "
+          f"Trend: {data['health_trend']:+.1f}  "
+          f"Alerts: {len(data['top_alerts'])}")
 
-    print(f"  Health score : {data['current_score']:.1f}/100")
-    print(f"  Trend        : {data['health_trend']:+.1f} pts")
-    print(f"  Alerts       : {len(data['top_alerts'])}")
-    print(f"  Neg mentions : {len(data['top_negative'])}")
+    print(f"\nCalling Groq ({GROQ_MODEL})...")
+    prompt     = build_prompt(data, brand_name)
+    llm_report = call_groq(prompt, GROQ_MODEL, GROQ_API_KEY)
+    print(f"  Report: {len(llm_report)} chars")
 
-    print(f"\nBuilding prompt...")
-    prompt = build_prompt(data, brand_name)
-    print(f"  Prompt length: {len(prompt)} chars")
+    # also save plain-text copy for archiving
+    txt_paths = save_report(llm_report, brand_name, output_dir)
+    print(f"  Text : {txt_paths['txt']}")
 
-    print(f"\nCalling Groq API ({GROQ_MODEL})...")
-    report_text = call_groq(prompt, GROQ_MODEL, GROQ_API_KEY)
-    print(f"  Report length: {len(report_text)} chars")
+    print(f"\nRendering HTML report...")
+    out_path = render_report(
+        data_summary=data,
+        llm_report=llm_report,
+        db_path=db_path,
+        brand_name=brand_name,
+        output_dir=output_dir,
+    )
 
-    print(f"\nSaving report...")
-    paths = save_report(report_text, brand_name, output_dir)
-    print(f"  Text : {paths['txt']}")
-    print(f"  HTML : {paths['html']}")
-
-    print(f"\n{'='*60}")
-    print(f"GENERATED REPORT")
-    print(f"{'='*60}")
-    print(report_text)
-    print(f"{'='*60}")
-
-    return paths
+    return out_path
 
 
 # ── Entry point ───────────────────────────────────────────────────────
@@ -418,11 +416,11 @@ if __name__ == "__main__":
     print(f"Report Generator | Brand: {BRAND_NAME}")
     print("=" * 60)
 
-    paths = run_report_generator(
+    out_path = run_report_generator(
         db_path=DB_PATH,
         brand_name=BRAND_NAME,
         output_dir="outputs",
     )
-    if paths:
+    if out_path:
         print(f"\nOpen your report:")
-        print(f"  open {paths['html']}")
+        print(f"  open {out_path}")

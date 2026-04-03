@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ brand_name }} Brand Health Report — {{ report_date }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   Helvetica, Arial, sans-serif;
+      background: #F8F7F4;
+      color: #2C2C2A;
+      line-height: 1.65;
+      padding: 32px 16px;
+    }
+    .page { max-width: 860px; margin: 0 auto; }
+
+    /* header */
+    .header {
+      background: #fff;
+      border: 0.5px solid #D3D1C7;
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header-left h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .header-left .meta {
+      font-size: 13px;
+      color: #888780;
+    }
+    .score-badge {
+      text-align: center;
+      min-width: 100px;
+    }
+    .score-number {
+      font-size: 42px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .score-label {
+      font-size: 11px;
+      color: #888780;
+      margin-top: 4px;
+    }
+    .score-trend {
+      font-size: 12px;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .trend-up   { color: #1D9E75; }
+    .trend-down { color: #D85A30; }
+    .trend-flat { color: #888780; }
+
+    /* aspect cards */
+    .section {
+      background: #fff;
+      border: 0.5px solid #D3D1C7;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888780;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+    .aspect-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .aspect-card {
+      background: #F8F7F4;
+      border-radius: 8px;
+      padding: 14px 16px;
+      border-left: 3px solid #D3D1C7;
+    }
+    .aspect-name {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #888780;
+      margin-bottom: 6px;
+    }
+    .aspect-score {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .aspect-pcts {
+      font-size: 11px;
+      color: #888780;
+    }
+    .pos { color: #1D9E75; }
+    .neg { color: #D85A30; }
+
+    /* charts */
+    .chart-img {
+      width: 100%;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    .chart-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    /* narrative */
+    .narrative {
+      font-size: 14px;
+      line-height: 1.75;
+    }
+    .narrative h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: #1a1a1a;
+    }
+    .narrative h2:first-child { margin-top: 0; }
+    .narrative p  { margin-bottom: 12px; }
+    .narrative ol { padding-left: 20px; margin-bottom: 12px; }
+    .narrative li { margin-bottom: 6px; }
+
+    /* alerts */
+    .alerts-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .alerts-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: #888780;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0 12px 10px 0;
+      border-bottom: 1px solid #F1EFE8;
+    }
+    .alerts-table td {
+      padding: 10px 12px 10px 0;
+      border-bottom: 0.5px solid #F1EFE8;
+      color: #444441;
+      vertical-align: top;
+    }
+    .alerts-table tr:last-child td { border-bottom: none; }
+    .sev-high   { color: #D85A30; font-weight: 600; }
+    .sev-medium { color: #BA7517; font-weight: 500; }
+    .type-drop  { color: #D85A30; }
+    .type-rise  { color: #1D9E75; }
+    .type-vol   { color: #534AB7; }
+
+    /* mentions */
+    .mention-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .mention-col-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .mention-list { list-style: none; }
+    .mention-item {
+      font-size: 12px;
+      color: #444441;
+      padding: 8px 0;
+      border-bottom: 0.5px solid #F1EFE8;
+      line-height: 1.5;
+    }
+    .mention-item:last-child { border-bottom: none; }
+    .mention-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .tag-neg { background: #FAECE7; color: #712B13; }
+    .tag-pos { background: #E1F5EE; color: #085041; }
+
+    /* footer */
+    .footer {
+      font-size: 11px;
+      color: #B4B2A9;
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 0.5px solid #D3D1C7;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>{{ brand_name }} Brand Health Report</h1>
+      <div class="meta">
+        Week of {{ date_range.start }} — {{ date_range.end }}
+        &nbsp;|&nbsp;
+        {{ total_mentions }} total mentions
+        &nbsp;|&nbsp;
+        {{ mention_counts | dictsort | map(attribute=0) | join(", ") }}
+      </div>
+    </div>
+    <div class="score-badge">
+      <div class="score-number"
+           style="color: {{ score_color }}">{{ current_score }}</div>
+      <div class="score-label">/ 100</div>
+      <div class="score-trend {{ trend_class }}">
+        {{ trend_arrow }} {{ health_trend | abs | round(1) }} pts
+      </div>
+    </div>
+  </div>
+
+  <!-- ASPECT SCORE CARDS -->
+  <div class="section">
+    <div class="section-title">Aspect scores — last 7 days</div>
+    <div class="aspect-grid">
+      {% for aspect, vals in aspect_scores.items() %}
+      {% if aspect != "overall" %}
+      <div class="aspect-card"
+           style="border-left-color: {{ aspect_color(aspect) }}">
+        <div class="aspect-name">{{ aspect }}</div>
+        <div class="aspect-score"
+             style="color: {{ aspect_color(aspect) }}">
+          {{ "%+.3f" | format(vals.avg_score) }}
+        </div>
+        <div class="aspect-pcts">
+          <span class="pos">{{ vals.positive_pct }}% pos</span>
+          &nbsp;/&nbsp;
+          <span class="neg">{{ vals.negative_pct }}% neg</span>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="chart-row">
+    <div class="section" style="margin-bottom:0">
+      <div class="section-title">Brand health trend</div>
+      {% if chart_trend %}
+      <img class="chart-img" src="{{ chart_trend }}" alt="Health score trend">
+      {% else %}
+      <p style="color:#888;font-size:13px">Insufficient data for trend chart</p>
+      {% endif %}
+    </div>
+    <div class="section" style="margin-bottom:0">
+      <div class="section-title">Sentiment split</div>
+      {% if chart_donut %}
+      <img class="chart-img" src="{{ chart_donut }}" alt="Sentiment split">
+      {% else %}
+      <p style="color:#888;font-size:13px">No sentiment data</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px"></div>
+
+  <div class="section" style="margin-bottom:16px">
+    <div class="section-title">Aspect sentiment scores</div>
+    {% if chart_aspects %}
+    <img class="chart-img" src="{{ chart_aspects }}" alt="Aspect scores">
+    {% else %}
+    <p style="color:#888;font-size:13px">No aspect data</p>
+    {% endif %}
+  </div>
+
+  <!-- LLM NARRATIVE -->
+  <div class="section">
+    <div class="section-title">Weekly analysis</div>
+    <div class="narrative">
+      {{ llm_report | replace("\n## ", '<h2>') | replace("\n\n", '</p><p>') | replace("\n", '<br>') | safe }}
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  {% if top_alerts %}
+  <div class="section">
+    <div class="section-title">Alerts detected this period</div>
+    <table class="alerts-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Aspect</th>
+          <th>Date</th>
+          <th>Z-score</th>
+          <th>Severity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alert in top_alerts %}
+        <tr>
+          <td class="type-{{ alert.type | replace('sentiment_', '') | replace('_spike','') }}">
+            {{ alert.type | replace("_", " ") | title }}
+          </td>
+          <td>{{ alert.aspect | upper }}</td>
+          <td>{{ alert.date }}</td>
+          <td>{{ "%+.2f" | format(alert.z_score) }}</td>
+          <td class="sev-{{ alert.severity }}">{{ alert.severity | upper }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- TOP MENTIONS -->
+  <div class="section">
+    <div class="section-title">Representative mentions</div>
+    <div class="mention-cols">
+      <div>
+        <div class="mention-col-title neg">Negative signals</div>
+        <ul class="mention-list">
+          {% for mention in top_negative %}
+          <li class="mention-item">
+            <span class="mention-tag tag-neg">neg</span>{{ mention }}
+          </li>
+          {% endfor %}
+          {% if not top_negative %}
+          <li class="mention-item" style="color:#888">None this period</li>
+          {% endif %}
+        </ul>
+      </div>
+      <div>
+        <div class="mention-col-title pos">Positive signals</div>
+        <ul class="mention-list">
+          {% for mention in top_positive %}
+          <li class="mention-item">
+            <span class="mention-tag tag-pos">pos</span>{{ mention }}
+          </li>
+          {% endfor %}
+          {% if not top_positive %}
+          <li class="mention-item" style="color:#888">None this period</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Generated {{ generated_at }}
+    &nbsp;|&nbsp;
+    Data: Reddit · NewsAPI · Google Play
+    &nbsp;|&nbsp;
+    NLP: PyABSA + distilBERT
+    &nbsp;|&nbsp;
+    LLM: Groq {{ groq_model }}
+    &nbsp;|&nbsp;
+    Brand Reputation Pipeline v1.0
+  </div>
+
+</div>
+</body>
+</html>

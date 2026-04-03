@@ -195,6 +195,26 @@ def task_fire_alerts(brand_name: str, db_path: str) -> dict:
     return {"alert_log_total": fired}
 
 
+@task(
+    name="generate-report",
+    description="LLM report generation via Groq + HTML render",
+    retries=1,
+    retry_delay_seconds=30,
+)
+def task_generate_report(brand_name: str, db_path: str) -> str:
+    logger = get_run_logger()
+    logger.info("Generating weekly HTML report")
+
+    from reports.report_generator import run_report_generator
+    out_path = run_report_generator(
+        db_path=db_path,
+        brand_name=brand_name,
+        output_dir="outputs",
+    )
+    logger.info(f"Report saved: {out_path}")
+    return out_path or ""
+
+
 # ── Flow ───────────────────────────────────────────────────────────────
 
 @flow(
@@ -242,6 +262,10 @@ def brand_reputation_pipeline(
     alert_result = task_fire_alerts(brand_name, db_path)
     logger.info(f"Stage 7 done: {alert_result}")
 
+    # stage 8 — report
+    report_path = task_generate_report(brand_name, db_path)
+    logger.info(f"Stage 8 done: {report_path}")
+
     # final summary
     summary = {
         "brand":        brand_name,
@@ -251,6 +275,7 @@ def brand_reputation_pipeline(
         "daily_rows":   daily_rows,
         "alerts":       alert_count,
         "health_score": health.get("health_score", 0),
+        "report_path":  report_path,
     }
     logger.info(f"Pipeline complete: {summary}")
     return summary
