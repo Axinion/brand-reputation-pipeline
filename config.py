@@ -14,7 +14,7 @@ GOOGLE_PLAY_APP_ID = "com.netflix.mediaclient"
 APP_STORE_APP_ID = "363590051"
 APP_STORE_APP_NAME = "netflix"
 
-DB_PATH = "data/brand_mentions.db"
+DB_PATH = os.getenv("DB_PATH", "data/brand_mentions.db")
 
 # LLM Report Generation
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

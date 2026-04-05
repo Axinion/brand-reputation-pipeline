@@ -2,7 +2,7 @@ services:
   - type: web
     name: brand-reputation-pipeline
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-prod.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: GROQ_API_KEY
@@ -13,3 +13,5 @@ services:
         sync: false
       - key: BRAND_NAME
         value: Netflix
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile

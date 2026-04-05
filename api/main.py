@@ -1,6 +1,7 @@
 import warnings
 warnings.filterwarnings("ignore")
 
+import os
 import sys
 import subprocess
 from pathlib import Path
@@ -77,23 +78,38 @@ _pipeline_status = {
 
 
 def _run_pipeline_subprocess():
-    """Run the full Prefect pipeline in a subprocess."""
+    """
+    Run pipeline — disabled on Render (RENDER=true): no NLP / Prefect stack.
+    Works locally with full requirements.txt.
+    """
     global _pipeline_status
-    _pipeline_status["running"]  = True
-    _pipeline_status["last_run"] = datetime.now(tz=timezone.utc).isoformat()
+    _pipeline_status["running"]   = True
+    _pipeline_status["last_run"]  = datetime.now(tz=timezone.utc).isoformat()
 
     try:
+        if os.getenv("RENDER", "").lower() == "true":
+            _pipeline_status["last_result"] = {
+                "exit_code": -1,
+                "stdout":    "",
+                "stderr":    (
+                    "Pipeline runs are disabled on Render (demo server). "
+                    "Clone the repo and run locally with full requirements.txt."
+                ),
+                "success":   False,
+            }
+            return
+
         result = subprocess.run(
             [sys.executable, str(ROOT / "pipeline" / "prefect_flow.py"), "run"],
             cwd=str(ROOT),
             capture_output=True,
             text=True,
-            timeout=7200,    # 2 hour max
+            timeout=7200,
         )
         _pipeline_status["last_result"] = {
             "exit_code": result.returncode,
-            "stdout":    result.stdout[-2000:],    # last 2000 chars
-            "stderr":    result.stderr[-500:]  if result.returncode != 0 else "",
+            "stdout":    result.stdout[-2000:],
+            "stderr":    result.stderr[-500:] if result.returncode != 0 else "",
             "success":   result.returncode == 0,
         }
     except subprocess.TimeoutExpired:
@@ -101,6 +117,16 @@ def _run_pipeline_subprocess():
             "exit_code": -1,
             "stdout":    "",
             "stderr":    "Pipeline timed out after 2 hours",
+            "success":   False,
+        }
+    except FileNotFoundError:
+        _pipeline_status["last_result"] = {
+            "exit_code": -1,
+            "stdout":    "",
+            "stderr":    (
+                "Pipeline dependencies not installed in this environment. "
+                "Run locally with full requirements.txt."
+            ),
             "success":   False,
         }
     except Exception as e:
@@ -278,8 +304,9 @@ async def landing_page():
   <div class="card">
     <h2>Run pipeline</h2>
     <p style="font-size:13px;color:#888780;margin-bottom:4px">
-      Triggers a full pipeline run: scrape → NLP → detect → alert → report.
-      Takes 15–20 minutes. Check /status for progress.
+      On this demo server, pipeline runs are disabled (NLP models require
+      local environment). The data and report shown are pre-generated.
+      Clone the repo and run locally for full pipeline execution.
     </p>
     <button class="run-btn" id="run-btn" onclick="triggerRun()">
       Run pipeline now
@@ -306,6 +333,10 @@ async function triggerRun() {{
       btn.textContent = 'Run pipeline now';
       btn.disabled = false;
       status.textContent = 'Pipeline is already running.';
+    }} else if (data.status === 'disabled') {{
+      btn.textContent = 'Run pipeline now';
+      btn.disabled = false;
+      status.textContent = data.message || 'Pipeline not available on this server.';
     }}
   }} catch(e) {{
     btn.textContent = 'Run pipeline now';
@@ -476,7 +507,19 @@ async def trigger_run(background_tasks: BackgroundTasks):
     """
     Starts a full pipeline run in the background.
     Returns immediately — check /status for progress.
+    On Render (RENDER=true), pipeline is not available — returns status disabled.
     """
+    if os.getenv("RENDER", "").lower() == "true":
+        return JSONResponse({
+            "status":  "disabled",
+            "message": (
+                "Pipeline runs are not available on this hosted demo. "
+                "Data and reports are pre-generated; run the repo locally "
+                "with full requirements.txt for end-to-end execution."
+            ),
+            "check": "/status",
+        })
+
     if _pipeline_status["running"]:
         return JSONResponse({
             "status":   "already_running",
