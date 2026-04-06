@@ -41,7 +41,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          # app-store-scraper pins requests==2.23.0, which conflicts with
+          # Prefect/docker stack; install it separately without deps.
+          grep -v '^app-store-scraper==' requirements.txt > /tmp/requirements-ci.txt
+          pip install -r /tmp/requirements-ci.txt
+          pip install app-store-scraper==0.3.5 --no-deps
 
       - name: Run pipeline
         env:
