@@ -1,0 +1,46 @@
+name: Weekly Brand Pipeline
+
+on:
+  schedule:
+    - cron: '0 6 * * 0' # every Sunday at 6am UTC
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pipeline
+        env:
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BRAND_NAME: Netflix
+          GROQ_MODEL: llama-3.3-70b-versatile
+          REDDIT_USER_AGENT: brand-monitor/1.0
+        run: python pipeline/prefect_flow.py run
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/brand_mentions.db outputs/*.html
+          git diff --staged --quiet || git commit -m "chore: weekly pipeline run $(date -u '+%Y-%m-%d')"
+          git push
