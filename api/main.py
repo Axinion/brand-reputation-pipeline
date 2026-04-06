@@ -304,13 +304,19 @@ async def landing_page():
   <div class="card">
     <h2>Run pipeline</h2>
     <p style="font-size:13px;color:#888780;margin-bottom:4px">
-      On this demo server, pipeline runs are disabled (NLP models require
-      local environment). The data and report shown are pre-generated.
-      Clone the repo and run locally for full pipeline execution.
+      Pipeline runs automatically every Sunday via GitHub Actions.
+      Data and report update weekly. Trigger a manual run from the
+      <a href="https://github.com/Axinion/brand-reputation-pipeline/actions"
+         style="color:#1D9E75">Actions tab</a> on GitHub.
     </p>
-    <button class="run-btn" id="run-btn" onclick="triggerRun()">
-      Run pipeline now
-    </button>
+    <a href="https://github.com/Axinion/brand-reputation-pipeline/actions"
+       target="_blank"
+       style="display:block;width:100%;padding:14px;background:#534AB7;
+              color:white;border:none;border-radius:8px;font-size:14px;
+              font-weight:600;cursor:pointer;margin-top:12px;text-align:center;
+              text-decoration:none;">
+      View pipeline runs on GitHub ↗
+    </a>
     <div id="run-status"></div>
   </div>
 
