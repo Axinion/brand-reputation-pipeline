@@ -1,9 +1,10 @@
 # Multi-Source Brand Reputation Intelligence Pipeline
 
-An end-to-end pipeline that ingests brand mentions from multiple sources,
-normalizes and stores them, runs two-stage NLP sentiment analysis (PyABSA
-aspect extraction + distilBERT fallback), and evaluates model performance
-against two independent ground truth datasets.
+An end-to-end brand intelligence system that ingests mentions from multiple
+sources, runs aspect-level sentiment analysis, computes trend-aware brand
+health, triggers alerts, generates LLM weekly reports, and serves outputs via
+FastAPI. A GitHub Actions workflow runs the full pipeline weekly and commits
+fresh data/report artifacts.
 
 
 ---
@@ -27,6 +28,33 @@ Google Play    --|                         |--> Evaluation + model card
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Reddit JSON]
+    B[NewsAPI]
+    C[Google Play / App Store]
+    A --> D[Normalize + SQLite]
+    B --> D
+    C --> D
+    D --> E[PyABSA ATEPC]
+    D --> F[distilBERT fallback]
+    E --> G[Daily aggregation]
+    F --> G
+    G --> H[Trend detection + z-score alerts]
+    H --> I[Composite brand health score]
+    I --> J[Groq weekly narrative]
+    I --> K[Matplotlib charts]
+    J --> L[Jinja2 HTML report]
+    K --> L
+    L --> M[FastAPI /report + JSON endpoints]
+    N[GitHub Actions weekly cron] --> D
+    N --> L
+```
+
+---
+
 ## Project structure
 
 ```text
@@ -43,9 +71,11 @@ brand-reputation-pipeline/
 ||  |- model_card.md        # Full evaluation methodology and results
 ||  |- metrics.json         # Raw metrics for downstream use
 ||  |- manual_labels.csv    # 100 hand-labelled Reddit + news records
-|- analytics/              # Week 3 - trend detection (coming)
-|- reports/                # Week 4 - report generation (coming)
-|- pipeline/               # Week 4 - Prefect orchestration (coming)
+|- analytics/              # Week 3 - aggregation, trends, scoring, alerts
+|- reports/                # Week 4 - Groq report generation + templating
+|- api/                    # Week 4 - FastAPI report server
+|- pipeline/               # Prefect DAG orchestration (8 stages)
+|- .github/workflows/      # Weekly GitHub Actions automation
 |- scripts/                # Helper scripts
 |- database.py             # SQLite schema, upsert, stats
 |- config.py               # Brand config and API keys (uses .env)
@@ -144,7 +174,7 @@ models use normalized, but original is available for display.
 
 ## Prefect orchestration
 
-The full pipeline runs as a Prefect DAG — 7 tasks chained sequentially with retry logic, caching, and a weekly deployment schedule.
+The full pipeline runs as a Prefect DAG with 8 tasks chained sequentially with retry logic and task-level resilience.
 
 ![Prefect dashboard showing brand-reputation-pipeline flow run with 3 completed tasks and 1 failed (retry test)](docs/prefect_dashboard.png)
 
@@ -159,8 +189,22 @@ The dashboard above shows the **retry resilience test**: `aggregate-daily` raise
 | `detect-trends` | 2 | |
 | `compute-health-score` | 2 | |
 | `fire-alerts` | 1 | Deduplication — safe to retry |
+| `generate-report` | 1 | Groq narrative + charted HTML report |
 
 Weekly deployment registered: `brand-reputation-pipeline/weekly-brand-monitor`
+
+---
+
+## Weekly automation (GitHub Actions)
+
+`Weekly Brand Pipeline` runs on:
+- `schedule`: every Sunday at 06:00 UTC
+- `workflow_dispatch`: manual trigger from GitHub Actions UI
+
+Workflow behavior:
+- caches PyABSA and HuggingFace model directories for faster reruns
+- executes full Prefect pipeline
+- commits updated `data/brand_mentions.db` and `outputs/*.html` back to `main`
 
 ---
 
@@ -183,15 +227,16 @@ Full methodology, per-class metrics, and limitations in [nlp/model_card.md](nlp/
 - [x] Week 1 — Multi-source data ingestion pipeline
 - [x] Week 2 — Aspect-based sentiment analysis (PyABSA + distilBERT)
 - [x] Week 3 — Trend detection, alerting, and Prefect orchestration
-- [ ] Week 4 — LLM report generation (Claude API) and deployment
+- [x] Week 4 — Groq LLM report generation, FastAPI server, Render/GitHub Actions deployment
 
 ---
 
 ## Tech stack
 
-Python 3.13 · SQLite · sqlite-utils · requests · newsapi-python ·
+Python · SQLite · sqlite-utils · requests · newsapi-python ·
 google-play-scraper · python-dotenv · PyABSA · Hugging Face Transformers ·
-distilBERT · scikit-learn · Pandas · rapidfuzz · Prefect 3 · smtplib · Slack Webhooks
+distilBERT · scikit-learn · Pandas · rapidfuzz · Prefect 3 · FastAPI ·
+Jinja2 · Matplotlib · Groq API · Slack Webhooks · GitHub Actions
 
 ---
 
