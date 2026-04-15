@@ -242,5 +242,4 @@ Jinja2 · Matplotlib · Groq API · Slack Webhooks · GitHub Actions
 
 ## Author
 
-Mihir Pandya  <- edit this
-([LinkedIn](https://www.linkedin.com/in/pandyamihir/))  <- edit this
+Mihir Pandya | ([LinkedIn](https://www.linkedin.com/in/pandyamihir/))
