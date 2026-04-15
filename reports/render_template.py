@@ -3,6 +3,8 @@ warnings.filterwarnings("ignore")
 
 import sys
 import os
+import re
+import html
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -89,6 +91,83 @@ def compute_sentiment_totals(db_path, brand_name, days_back=7):
     return counts
 
 
+def markdown_to_html(md_text):
+    """
+    Convert a constrained markdown subset to safe HTML.
+    Supports: ## headings, bold (**text**), ordered and unordered lists.
+    """
+    if not md_text:
+        return "<p>No analysis generated.</p>"
+
+    def _inline(text):
+        escaped = html.escape(text)
+        return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
+
+    lines = md_text.splitlines()
+    out = []
+    in_ol = False
+    in_ul = False
+    para = []
+
+    def flush_para():
+        nonlocal para
+        if para:
+            out.append(f"<p>{_inline(' '.join(para).strip())}</p>")
+            para = []
+
+    def close_lists():
+        nonlocal in_ol, in_ul
+        if in_ol:
+            out.append("</ol>")
+            in_ol = False
+        if in_ul:
+            out.append("</ul>")
+            in_ul = False
+
+    for raw in lines:
+        line = raw.strip()
+
+        if not line:
+            flush_para()
+            close_lists()
+            continue
+
+        if line.startswith("## "):
+            flush_para()
+            close_lists()
+            out.append(f"<h2>{_inline(line[3:].strip())}</h2>")
+            continue
+
+        ol_match = re.match(r"^(\d+)\.\s+(.*)$", line)
+        if ol_match:
+            flush_para()
+            if in_ul:
+                out.append("</ul>")
+                in_ul = False
+            if not in_ol:
+                out.append("<ol>")
+                in_ol = True
+            out.append(f"<li>{_inline(ol_match.group(2))}</li>")
+            continue
+
+        if line.startswith("- "):
+            flush_para()
+            if in_ol:
+                out.append("</ol>")
+                in_ol = False
+            if not in_ul:
+                out.append("<ul>")
+                in_ul = True
+            out.append(f"<li>{_inline(line[2:].strip())}</li>")
+            continue
+
+        para.append(line)
+
+    flush_para()
+    close_lists()
+    return "\n".join(out)
+
+
 def render_report(data_summary, llm_report, db_path,
                   brand_name, output_dir="outputs"):
     """
@@ -148,7 +227,7 @@ def render_report(data_summary, llm_report, db_path,
         "top_positive":    data_summary["top_positive"],
         "mention_counts":  data_summary["mention_counts"],
         "total_mentions":  total_ment,
-        "llm_report":      llm_report,
+        "llm_report_html": markdown_to_html(llm_report),
         "chart_trend":     chart_trend,
         "chart_aspects":   chart_aspects,
         "chart_donut":     chart_donut,

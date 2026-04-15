@@ -292,7 +292,7 @@
   <div class="section">
     <div class="section-title">Weekly analysis</div>
     <div class="narrative">
-      {{ llm_report | replace("\n## ", '<h2>') | replace("\n\n", '</p><p>') | replace("\n", '<br>') | safe }}
+      {{ llm_report_html | safe }}
     </div>
   </div>
 
