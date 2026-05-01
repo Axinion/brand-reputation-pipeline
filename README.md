@@ -222,15 +222,6 @@ Full methodology, per-class metrics, and limitations in [nlp/model_card.md](nlp/
 
 ---
 
-## Roadmap
-
-- [x] Week 1 — Multi-source data ingestion pipeline
-- [x] Week 2 — Aspect-based sentiment analysis (PyABSA + distilBERT)
-- [x] Week 3 — Trend detection, alerting, and Prefect orchestration
-- [x] Week 4 — Groq LLM report generation, FastAPI server, Render/GitHub Actions deployment
-
----
-
 ## Tech stack
 
 Python · SQLite · sqlite-utils · requests · newsapi-python ·
